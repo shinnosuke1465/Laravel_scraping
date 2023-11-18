@@ -8,36 +8,49 @@ use Illuminate\Support\Facades\DB;
 
 class ScrapeMynavi extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'scrape:mynavi';
+        /**
+         * The name and signature of the console command.
+         *
+         * @var string
+         */
+        protected $signature = 'scrape:mynavi';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Scrape Mynavi';
+        /**
+         * The console command description.
+         *
+         * @var string
+         */
+        protected $description = 'Scrape Mynavi';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
-    {
-        $url = 'https://tenshoku.mynavi.jp/list/pg3/';
-        $crawler = \Goutte::request('GET', $url);
-        $urls = $crawler->filter('.cassetteRecruit__copy > a')->each(function
-            ($node) {
-                    $href = $node->attr('href');
-                    return [
-                            'url' => substr($href, 0, strpos($href, '/', 1) + 1),
-                            'created_at' => Carbon::now(),
-                            'updated_at' => Carbon::now(),
-                    ];
-            });
-            DB::table('mynavi_urls')->insert($urls);
+        /**
+         * Execute the console command.
+         */
+        public function handle()
+        {
+                $this->truncateTables();
+                $this->saveUrls();
+        }
+
+        private function truncateTables()
+        {
+                DB::table('mynavi_urls')->truncate();
+        }
+
+        private function saveUrls()
+        {
+                foreach(range(1, 2) as $num) {
+                        $url = 'https://tenshoku.mynavi.jp/list/pg' . $num . '/';
+                        $crawler = \Goutte::request('GET', $url);
+                        $urls = $crawler->filter('.cassetteRecruit__copy > a')->each(function ($node) {
+                                $href = $node->attr('href');
+                                return [
+                                        'url' => substr($href, 0, strpos($href, '/', 1) + 1),
+                                        'created_at' => Carbon::now(),
+                                        'updated_at' => Carbon::now(),
+                                ];
+                        });
+                        DB::table('mynavi_urls')->insert($urls);
+                        sleep(30);
+                }
         }
 }
