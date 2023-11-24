@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('mynavi_jobs', function (Blueprint $table) {
             $table->id();
+            $table->string('url');
+            $table->string('title');
+            $table->string('company_name');
+            $table->text('features');
             $table->timestamps();
         });
     }

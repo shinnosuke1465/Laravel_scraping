@@ -3,13 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Models\MynaviUrl;
+use App\Models\MynaviJobs;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ScrapeMynavi extends Command
 {
-        const HOST = 'https://tenshoku.mynavi.jp/';
+        const HOST = 'https://tenshoku.mynavi.jp';
         /**
          * The name and signature of the console command.
          *
@@ -42,8 +43,8 @@ class ScrapeMynavi extends Command
 
         private function saveUrls()
         {
-                foreach(range(1, 2) as $num) {
-                        $url = 'https://tenshoku.mynavi.jp/list/pg' . $num . '/';
+                foreach (range(1, 2) as $num) {
+                        $url = $this::HOST . '/list/pg' . $num . '/';
                         $crawler = \Goutte::request('GET', $url);
                         $urls = $crawler->filter('.cassetteRecruit__copy > a')->each(function ($node) {
                                 $href = $node->attr('href');
@@ -58,10 +59,38 @@ class ScrapeMynavi extends Command
                 }
         }
 
-        private function saveJobs(){
-                foreach(MynaviUrl::all() as $mynaviUrl){
+        private function saveJobs()
+        {
+                foreach (MynaviUrl::all() as $mynaviUrl) {
                         $url = $this::HOST . $mynaviUrl->url;
-                        dump($url);
+                        $crawler = \Goutte::request('GET', $url);
+
+                        MynaviJobs::create([
+                                'url' => $url,
+                                'title' => $this->getTitle($crawler),
+                                'company_name' => $this->getCompanyName($crawler),
+                                'features' => $this->getFeatures($crawler),
+                        ]);
+                        break;
+                        sleep(30);
                 }
+        }
+
+        private function getTitle($crawler)
+        {
+                return $crawler->filter('.occName')->text();
+        }
+        
+        private function getCompanyName($crawler)
+        {
+                return $crawler->filter('.companyName')->text();
+        }
+
+        private function getFeatures($crawler)
+        {
+                $features = $crawler->filter('.cassetteRecruit__attribute.cassetteRecruit__attribute-jobinfo .cassetteRecruit__attributeLabel span')->each(function ($node) {
+                        return $node->text();
+                });
+                return implode(',', $features);
         }
 }
